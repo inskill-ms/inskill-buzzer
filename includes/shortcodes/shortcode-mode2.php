@@ -114,6 +114,23 @@ class InskillBuzzer_Shortcodes_Mode2 extends InskillBuzzer_Shortcodes {
         var ajaxurl = "<?php echo admin_url('admin-ajax.php'); ?>";
         var currentParticipantMode2 = "";
         document.addEventListener('DOMContentLoaded', function(){
+            // Mise en place de l'API Web Audio pour le son du buzzer
+            var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            var buzzerBuffer = null;
+            fetch("<?php echo INSKILL_BUZZER_PLUGIN_URL . 'media/buzzer_sound.mp3'; ?>")
+                .then(function(response) {
+                    return response.arrayBuffer();
+                })
+                .then(function(arrayBuffer) {
+                    return audioContext.decodeAudioData(arrayBuffer);
+                })
+                .then(function(decodedData) {
+                    buzzerBuffer = decodedData;
+                })
+                .catch(function(error) {
+                    console.error("Erreur lors du chargement du son :", error);
+                });
+
             var form = document.getElementById('participant_form_mode2');
             var nameInput = document.getElementById('participant_name_mode2');
             var teamSelect = document.getElementById('participant_team_mode2');
@@ -146,7 +163,7 @@ class InskillBuzzer_Shortcodes_Mode2 extends InskillBuzzer_Shortcodes {
                 });
             });
 
-            // Gestion du buzzer
+            // Gestion du buzzer avec déclenchement du son
             buzzerBtn.addEventListener('click', function(){
                 if(hasBuzzed) return;
                 if (currentParticipantMode2 === "") {
@@ -162,6 +179,13 @@ class InskillBuzzer_Shortcodes_Mode2 extends InskillBuzzer_Shortcodes {
                 .then(response => response.json())
                 .then(data => {
                     if(data.success) {
+                        // Jouer le son du buzzer
+                        if(buzzerBuffer) {
+                            var source = audioContext.createBufferSource();
+                            source.buffer = buzzerBuffer;
+                            source.connect(audioContext.destination);
+                            source.start(0);
+                        }
                         buzzerBtn.style.backgroundColor = 'green';
                         buzzerBtn.textContent = 'Buzzed!';
                         hasBuzzed = true;
@@ -420,7 +444,6 @@ class InskillBuzzer_Shortcodes_Mode2 extends InskillBuzzer_Shortcodes {
                 }
             });
         }
-
         function attachBonusListeners() {
             var bonusButtons = teamScoreboard.querySelectorAll('.bonus-btn');
             bonusButtons.forEach(function(btn) {
@@ -440,7 +463,6 @@ class InskillBuzzer_Shortcodes_Mode2 extends InskillBuzzer_Shortcodes {
                 });
             });
         }
-
         function updateParticipantsList() {
             fetch(ajaxurl + '?action=get_connected_participants_mode2')
             .then(response => response.json())
@@ -466,7 +488,6 @@ class InskillBuzzer_Shortcodes_Mode2 extends InskillBuzzer_Shortcodes {
                 }
             });
         }
-
         function attachEjectListeners() {
             var ejectButtons = participantsList.querySelectorAll('.eject-btn');
             ejectButtons.forEach(function(btn) {
@@ -493,7 +514,7 @@ class InskillBuzzer_Shortcodes_Mode2 extends InskillBuzzer_Shortcodes {
                 });
             });
         }
-
+        
         setInterval(function(){
             updateTop3();
             updateRanking();
@@ -601,7 +622,7 @@ class InskillBuzzer_Shortcodes_Mode2 extends InskillBuzzer_Shortcodes {
             });
         }
         
-        // Vérification périodique pour déconnecter le participant (logique reprise du mode 1)
+        // Vérification périodique pour déconnecter le participant
         setInterval(function(){
             fetch(ajaxurl + '?action=get_connected_participants_mode2')
             .then(response => response.json())

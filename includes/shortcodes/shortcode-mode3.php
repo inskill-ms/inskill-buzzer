@@ -102,6 +102,23 @@ class InskillBuzzer_Shortcodes_Mode3 extends InskillBuzzer_Shortcodes {
         var currentParticipantMode3 = "";
         var hasAnswered = false; // Flag pour indiquer que le participant a répondu
         document.addEventListener('DOMContentLoaded', function(){
+            // Mise en place de l'API Web Audio pour le son du buzzer
+            var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            var buzzerBuffer = null;
+            fetch("<?php echo INSKILL_BUZZER_PLUGIN_URL . 'media/buzzer_sound.mp3'; ?>")
+                .then(function(response) {
+                    return response.arrayBuffer();
+                })
+                .then(function(arrayBuffer) {
+                    return audioContext.decodeAudioData(arrayBuffer);
+                })
+                .then(function(decodedData) {
+                    buzzerBuffer = decodedData;
+                })
+                .catch(function(error) {
+                    console.error("Erreur lors du chargement du son :", error);
+                });
+
             var participantForm = document.getElementById('participant_form_mode3');
             var participantNameInput = document.getElementById('participant_name_mode3');
             var validateButton = document.getElementById('validate_button_mode3');
@@ -149,6 +166,13 @@ class InskillBuzzer_Shortcodes_Mode3 extends InskillBuzzer_Shortcodes {
                     .then(response => response.json())
                     .then(data => {
                         if(data.success) {
+                            // Lecture du son du buzzer
+                            if(buzzerBuffer) {
+                                var source = audioContext.createBufferSource();
+                                source.buffer = buzzerBuffer;
+                                source.connect(audioContext.destination);
+                                source.start(0);
+                            }
                             btn.style.backgroundColor = 'green';
                             hasAnswered = true;
                             answerButtons.forEach(function(otherBtn) {
